@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>University FAQ Bot</title>
+<style>
+:root{--bg:#f6f7fb;--card:#fff;--ink:#1c2230;--mute:#6b7385;--accent:#3b5bdb;--onaccent:#fff;--bot:#e9edf8;--line:#dde1ec;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12151d;--card:#1b1f2b;--ink:#e8ebf4;--mute:#9aa3b8;--accent:#7c93ff;--onaccent:#10131c;--bot:#252a3a;--line:#2d3346}}
+:root[data-theme="dark"]{--bg:#12151d;--card:#1b1f2b;--ink:#e8ebf4;--mute:#9aa3b8;--accent:#7c93ff;--onaccent:#10131c;--bot:#252a3a;--line:#2d3346}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.app{display:flex;flex-direction:column;height:100%;max-width:720px;margin:0 auto}
+header{padding:14px 16px 8px}
+h1{font-size:19px;margin:0}
+.sub{color:var(--mute);font-size:13px}
+details{margin:6px 16px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 12px}
+summary{cursor:pointer;font-size:14px;color:var(--accent)}
+textarea{width:100%;min-height:150px;margin-top:8px;border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--bg);color:var(--ink);font:13px/1.4 ui-monospace,Menlo,monospace}
+#log{flex:1;overflow-y:auto;padding:10px 16px;display:flex;flex-direction:column;gap:10px}
+.m{max-width:85%;padding:10px 13px;border-radius:16px;white-space:pre-wrap;word-wrap:break-word}
+.bot{background:var(--bot);align-self:flex-start;border-bottom-left-radius:4px}
+.me{background:var(--accent);color:var(--onaccent);align-self:flex-end;border-bottom-right-radius:4px}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:4px 16px}
+.chip{flex:none;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:7px 12px;font-size:13px;cursor:pointer}
+.bar{display:flex;gap:8px;padding:8px 16px 12px}
+input{flex:1;min-width:0;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:11px 16px;font-size:16px}
+button.send{border:0;background:var(--accent);color:var(--onaccent);border-radius:999px;padding:0 18px;font-size:15px;font-weight:600;cursor:pointer}
+button:disabled{opacity:.5}
+</style>
+</head>
+<body>
+<div class="app">
+<header><h1>University FAQ Bot</h1><div class="sub">Ask about admissions, fees, exams and campus rules.</div></header>
+<details><summary>Edit knowledge base (the bot answers only from this)</summary>
+<textarea id="kb" spellcheck="false"></textarea></details>
+<div id="log"></div>
+<div class="chips" id="chips"></div>
+<div class="bar"><input id="q" placeholder="Ask a question…" autocomplete="off"><button class="send" id="go">Send</button></div>
+</div>
+<script>
+var DEFAULT_KB = "UNIVERSITY: Manav Rachna International Institute of Research and Studies (MRIIRS), Faridabad. Deemed university, NAAC A++. Address: Sector 43, Aravalli Hills, Delhi-Surajkund Road, Faridabad 121004, Haryana. Website: manavrachna.edu.in\n\nADMISSIONS: Apply online on the Manav Rachna admission portal (register, fill the form, upload documents, pay the application fee). Admission is based on MRNAT (Manav Rachna National Aptitude Test) scores or accepted national exams, plus eligibility. Shortlisted candidates get documents verified in person with originals, then confirm the seat by paying the admission fee. Official admission email: admissions@manavrachna.edu.in (the only official email for admission communication).\n\nMCA ELIGIBILITY: BCA / BSc (Engineering) or an equivalent degree, or B.Sc / B.Com / B.A. with Mathematics at 10+2 or graduation level, with about 50% marks. Intake is about 120 seats. (From third-party listings, so verify on the official site.)\n\nFEES: MCA tuition is roughly Rs 2.18 lakh for year 1 and Rs 2.28 lakh for year 2 per third-party listings. Sources differ, so confirm exact current fees with the admission helpdesk. Refund of fees follows UGC guidelines. A student who is detained must pay the fees again on re-admission.\n\nEXAMS: Rules are in the MRIIRS General Rules for Examinations policy, which covers re-evaluation or rechecking of answer sheets, supplementary examinations, improvement of SGPA/CGPA and promotion to the next semester. Exam schedule, marks, grades and time table are available on the student portal. For re-evaluation deadlines and fees, contact the Examination Branch or read the policy PDF on manavrachna.edu.in.\n\nATTENDANCE: A student with shortage of attendance is not allowed to sit the end-semester exam for that course and must re-register for it in a later semester. The exact minimum percentage is not in this knowledge base, so confirm it with the department. Attendance defaults are sent to parents by SMS and email. Medical or genuine cases can be considered with Vice-Chancellor approval.\n\nHOSTEL: Hostels for boys and girls are available, with mess and laundry. Annual cost is roughly Rs 1.3 lakh to Rs 2.2 lakh depending on room type (third-party listings, so verify). Night attendance is taken. The hostel rules booklet is available after login at mrei.edu.in.\n\nCONTACT: Admission Helpdesk 0129-4259000 (9 AM to 5 PM on weekdays). Student Facilitation Centre (grades, attendance issues, exam re-application, no-dues form): sfc@manavrachna.edu.in, 7303819911 or 7303829911, E Block ground floor, MREI campus.";
+var kb = document.getElementById("kb"), log = document.getElementById("log"),
+    q = document.getElementById("q"), go = document.getElementById("go"), chips = document.getElementById("chips");
+var chat = [], sample = null, busy = false;
+
+try { kb.value = localStorage.getItem("univ_kb_v2") || DEFAULT_KB; } catch (e) { kb.value = DEFAULT_KB; }
+kb.addEventListener("input", function () { try { localStorage.setItem("univ_kb_v2", kb.value); } catch (e) {} });
+
+function add(role, text) {
+  var d = document.createElement("div");
+  d.className = "m " + (role === "me" ? "me" : "bot");
+  d.textContent = text;
+  log.appendChild(d); log.scrollTop = log.scrollHeight;
+  return d;
+}
+add("bot", "Hi! I\u2019m the university FAQ bot. I know MRIIRS admissions, fees, exams, attendance, hostel and contacts. Ask me anything.");
+
+["How do I apply?", "What are the fees?", "Exam rules", "Attendance policy", "Hostel info"].forEach(function (t) {
+  var b = document.createElement("button"); b.className = "chip"; b.textContent = t;
+  b.onclick = function () { ask(t); }; chips.appendChild(b);
+});
+
+(async function () {
+  try { sample = await window.claude.use("sample"); } catch (e) { sample = null; }
+  if (!sample) { add("bot", "Couldn\u2019t connect to Claude yet. Try sending a message anyway, and I\u2019ll retry."); }
+})();
+
+function localAnswer(qs) {
+  var syn = { apply: "admissions", application: "admissions", admission: "admissions", join: "admissions", fee: "fees", pay: "fees", payment: "fees", exam: "exams", test: "exams", marks: "exams", attend: "attendance", room: "hostel", stay: "hostel", helpdesk: "contact", phone: "contact", email: "contact" };
+  var words = (qs.toLowerCase().match(/[a-z0-9]+/g) || []).filter(function (w) { return w.length > 2; });
+  words = words.concat(words.map(function (w) { return syn[w]; }).filter(Boolean));
+  var best = null, bs = 0;
+  kb.value.split(/\n\s*\n/).forEach(function (b) {
+    var l = b.toLowerCase(), s = 0;
+    words.forEach(function (w) { if (l.indexOf(w) > -1) s++; });
+    if (s > bs) { bs = s; best = b; }
+  });
+  return best ? best : "I couldn\u2019t find that in the knowledge base. Please contact the university helpdesk.";
+}
+async function ask(text) {
+  text = (text || "").trim();
+  if (!text || busy) return;
+  busy = true; go.disabled = true; q.value = "";
+  add("me", text);
+  var out = add("bot", "…");
+  if (!sample) { try { sample = await window.claude.use("sample"); } catch (e) { sample = null; } }
+  if (!sample) { out.textContent = localAnswer(text); busy = false; go.disabled = false; return; }
+  var convo = chat.map(function (h) { return (h.r === "u" ? "Student: " : "Bot: ") + h.t; }).join("\n");
+  var prompt = "You are a friendly FAQ assistant for a university. Answer ONLY using the knowledge base below. " +
+    "If the answer is missing or still a [placeholder], say you don\u2019t have that information and suggest contacting the university helpdesk. " +
+    "Never invent dates, fees or rules. Keep answers short (under 80 words) and clear.\n\n" +
+    "KNOWLEDGE BASE:\n" + kb.value + "\n\nCONVERSATION SO FAR:\n" + convo + "\n\nStudent: " + text + "\nBot:";
+  try {
+    var r, tries = 0;
+    while (true) {
+      try {
+        r = await Promise.race([sample([{ role: "user", content: prompt }], { cache: false, onText: function (p) { out.textContent = p.text; log.scrollTop = log.scrollHeight; } }), new Promise(function (_, rej) { setTimeout(function () { rej({ code: "timeout", message: "No reply after 40 seconds. Reload the page and try again." }); }, 40000); })]);
+        break;
+      } catch (err) {
+        if (err && err.code === "upstream_error" && tries < 3) { tries++; out.textContent = "Retrying (" + tries + ")…"; await new Promise(function (s) { setTimeout(s, 1500 * tries); }); continue; }
+        throw err;
+      }
+    }
+    out.textContent = r.text;
+    chat.push({ r: "u", t: text }, { r: "b", t: r.text });
+    if (chat.length > 12) chat = chat.slice(-12);
+  } catch (e) {
+    out.textContent = localAnswer(text);
+  }
+  busy = false; go.disabled = false; q.focus();
+}
+go.onclick = function () { ask(q.value); };
+q.addEventListener("keydown", function (e) { if (e.key === "Enter") ask(q.value); });
+</script>
+</body>
+</html>
